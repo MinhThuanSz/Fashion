@@ -3,38 +3,19 @@ const { sequelize } = require('../config/db');
 
 const getMyOrders = async (userId) => {
   try {
-    const orders = await Order.findAll({
+    return await Order.findAll({
       where: { userId: userId },
       include: [
         { 
           model: OrderItem, 
           as: 'items',
-          include: [
-            { 
-              model: ProductVariant, 
-              as: 'variant', 
-              include: [{ model: Product, as: 'product' }] 
-            }
-          ] 
+          include: [{ model: ProductVariant, as: 'variant' }]
         }
       ],
-      order: [['createdAt', 'DESC']]
-    });
-
-    // Chuyển đổi dữ liệu sang dạng phẳng gọn nhẹ cho Frontend dễ dùng
-    return orders.map(order => {
-      const orderJson = order.toJSON();
-      // Lấy ảnh của sản phẩm đầu tiên làm ảnh đại diện đơn hàng
-      const firstItem = orderJson.items?.[0];
-      const productImage = firstItem?.variant?.product?.image || firstItem?.variant?.product?.images?.[0] || null;
-      
-      return {
-        ...orderJson,
-        representativeImage: productImage
-      };
+      order: [['id', 'DESC']]
     });
   } catch (error) {
-    console.error('Service getMyOrders Error:', error);
+    console.error('Service getMyOrders Error:', error.message);
     throw error;
   }
 };
@@ -135,7 +116,7 @@ const getOrderById = async (orderId, userId, isAdmin) => {
       { 
         model: OrderItem, 
         as: 'items',
-        include: [{ model: ProductVariant, as: 'variant', include: ['product'] }] 
+        include: [{ model: ProductVariant, as: 'variant' }]
       }
     ]
   });

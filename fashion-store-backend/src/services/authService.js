@@ -50,6 +50,10 @@ const login = async (email, password) => {
       id: user.id,
       full_name: user.full_name,
       email: user.email,
+      phone: user.phone,
+      address: user.address,
+      city: user.city,
+      avatar: user.avatar,
       role: user.Role.name,
       token: generateToken(user.id)
     };
@@ -62,11 +66,24 @@ const updateProfile = async (userId, data) => {
   const user = await User.findByPk(userId);
   if (!user) throw new Error('User not found');
 
-  user.full_name = data.full_name || user.full_name;
-  user.phone = data.phone || user.phone;
-  user.address = data.address || user.address;
+  // Cập nhật tất cả các trường được phép, kể cả khi gửi chuỗi rỗng để xóa
+  if (data.full_name !== undefined) user.full_name = data.full_name;
+  if (data.phone !== undefined) user.phone = data.phone;
+  if (data.address !== undefined) user.address = data.address;
+  if (data.city !== undefined) user.city = data.city;
+  if (data.avatar !== undefined) user.avatar = data.avatar;
+
   await user.save();
-  return user;
+
+  return {
+    id: user.id,
+    full_name: user.full_name,
+    email: user.email,
+    phone: user.phone,
+    address: user.address,
+    city: user.city,
+    avatar: user.avatar
+  };
 };
 
 const changePassword = async (userId, oldPassword, newPassword) => {

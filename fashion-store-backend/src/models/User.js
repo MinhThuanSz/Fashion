@@ -28,7 +28,7 @@ const User = sequelize.define('User', {
     type: DataTypes.STRING(255)
   },
   avatar: {
-    type: DataTypes.STRING(255)
+    type: DataTypes.TEXT
   },
   role_id: {
     type: DataTypes.INTEGER,

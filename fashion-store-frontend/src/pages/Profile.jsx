@@ -1,13 +1,14 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { 
   User as UserIcon, Package, Settings, LogOut, ChevronRight, 
   MapPin, Phone, Mail, ShoppingBag, Clock, CheckCircle2, Truck, 
   CreditCard, ArrowUpRight, TrendingUp, Star, MoreHorizontal,
-  ChevronDown, X
+  ChevronDown, X, Camera
 } from 'lucide-react'
-import { logout } from '../store/slices/authSlice'
+import { logout, updateUser } from '../store/slices/authSlice'
+import { authApi } from '../services/api'
 import { motion, AnimatePresence } from 'framer-motion'
 import { UI_TEXT } from '../constants/text'
 import toast from 'react-hot-toast'
@@ -22,10 +23,70 @@ const Profile = () => {
   const [orders, setOrders] = useState([])
   const [loadingOrders, setLoadingOrders] = useState(false)
 
+  // --- Profile form state ---
+  const [profileForm, setProfileForm] = useState({
+    full_name: user?.full_name || '',
+    phone: user?.phone || '',
+    city: user?.city || 'Thành phố Hồ Chí Minh',
+    address: user?.address || 'Thành phố Hồ Chí Minh',
+  })
+  const [avatarPreview, setAvatarPreview] = useState(user?.avatar || '')
+  const [saving, setSaving] = useState(false)
+  const fileInputRef = useRef(null)
+
+  React.useEffect(() => {
+    if (user) {
+      setProfileForm({
+        full_name: user.full_name || '',
+        phone: user.phone || '',
+        city: user.city || 'Thành phố Hồ Chí Minh',
+        address: user.address || 'Thành phố Hồ Chí Minh',
+      })
+      setAvatarPreview(user.avatar || '')
+    }
+  }, [user])
+
   const handleLogout = () => {
     dispatch(logout())
     navigate('/auth')
     toast.success('Hẹn gặp lại bạn sớm!', { icon: '👋' })
+  }
+
+  const handleProfileChange = (field, value) => {
+    setProfileForm(prev => ({ ...prev, [field]: value }))
+  }
+
+  const handleAvatarChange = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Ảnh quá lớn! Tối đa 2MB.')
+      return
+    }
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      setAvatarPreview(reader.result)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleSaveProfile = async () => {
+    try {
+      setSaving(true)
+      const dataToSend = { ...profileForm }
+      if (avatarPreview && avatarPreview !== user?.avatar) {
+        dataToSend.avatar = avatarPreview
+      }
+      const res = await authApi.updateProfile(dataToSend)
+      if (res.success) {
+        dispatch(updateUser(res.data))
+        toast.success('Cập nhật thông tin thành công!', { icon: '✅' })
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Không thể cập nhật thông tin')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const tabs = [
@@ -91,15 +152,19 @@ const Profile = () => {
           <aside className="w-full lg:w-80 shrink-0 space-y-10 animate-fade-in">
              <div className="p-10 bg-white rounded-[3rem] border border-gray-100 shadow-premium text-center space-y-6 group overflow-hidden relative">
                 <div className="relative">
-                  <div className="w-32 h-32 rounded-[2.5rem] bg-black text-white flex items-center justify-center font-black text-4xl mx-auto shadow-2xl shadow-black/10 transition-transform group-hover:rotate-6">
-                    {user?.email?.[0].toUpperCase()}
+                  <div className="w-32 h-32 rounded-[2.5rem] bg-black text-white flex items-center justify-center font-black text-4xl mx-auto shadow-2xl shadow-black/10 transition-transform group-hover:rotate-6 overflow-hidden">
+                    {avatarPreview ? (
+                      <img src={avatarPreview} className="w-full h-full object-cover" alt="Avatar" />
+                    ) : (
+                      user?.email?.[0].toUpperCase()
+                    )}
                   </div>
                   <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-white border border-gray-100 rounded-xl flex items-center justify-center shadow-lg">
                      <Star size={18} className="fill-yellow-400 text-yellow-400" />
                   </div>
                 </div>
                 <div className="space-y-1">
-                   <h2 className="text-2xl font-black uppercase tracking-wider truncate px-2 italic">{user?.email?.split('@')[0]}</h2>
+                   <h2 className="text-2xl font-black uppercase tracking-wider truncate px-2 italic">{user?.full_name || user?.email?.split('@')[0]}</h2>
                    <p className={`text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full inline-block ${currentLevel.bg} ${currentLevel.color}`}>
                       HẠNG {currentLevel.name}
                    </p>
@@ -213,11 +278,7 @@ const Profile = () => {
                         <div key={order.id} className="p-8 rounded-[3rem] bg-white border border-gray-50 shadow-sm flex flex-col md:flex-row justify-between items-center gap-10 group overflow-hidden relative">
                            <div className="flex items-center gap-8 relative z-10">
                               <div className="w-16 h-16 rounded-2xl bg-gray-50 overflow-hidden flex items-center justify-center group-hover:bg-black transition-all">
-                                 {order.representativeImage ? (
-                                    <img src={order.representativeImage} className="w-full h-full object-cover" alt="Order" />
-                                 ) : (
-                                    <Package size={28} className="text-gray-300 group-hover:text-white" />
-                                 )}
+                                 <Package size={28} className="text-gray-300 group-hover:text-white" />
                               </div>
                               <div className="space-y-1">
                                  <p className="text-2xl font-black font-outfit italic">#{order.id}</p>
@@ -247,25 +308,56 @@ const Profile = () => {
              )}
 
              {activeTab === 'settings' && (
-                <div className="bg-white p-12 md:p-20 rounded-[4rem] border border-gray-100 shadow-sm space-y-10">
+                <div className="bg-white p-12 md:p-20 rounded-[4rem] border border-gray-100 shadow-sm space-y-12">
                    <div className="space-y-4">
                       <h2 className="text-5xl font-black uppercase tracking-tight italic skew-x-[-2deg]">THÔNG TIN CÁ NHÂN</h2>
                       <div className="w-16 h-2 bg-black/5"></div>
                    </div>
 
+                   {/* Avatar Upload */}
+                   <div className="flex items-center gap-8">
+                     <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                       <div className="w-28 h-28 rounded-[2rem] bg-black text-white flex items-center justify-center font-black text-3xl overflow-hidden shadow-2xl shadow-black/10 transition-transform group-hover:scale-105">
+                         {avatarPreview ? (
+                           <img src={avatarPreview} className="w-full h-full object-cover" alt="Avatar" />
+                         ) : (
+                           user?.email?.[0].toUpperCase()
+                         )}
+                       </div>
+                       <div className="absolute inset-0 rounded-[2rem] bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                         <Camera size={24} className="text-white" />
+                       </div>
+                       <input
+                         ref={fileInputRef}
+                         type="file"
+                         accept="image/*"
+                         onChange={handleAvatarChange}
+                         className="hidden"
+                       />
+                     </div>
+                     <div className="space-y-2">
+                       <p className="text-sm font-black uppercase tracking-widest">Ảnh đại diện</p>
+                       <p className="text-xs text-gray-400 italic">Bấm vào ảnh để thay đổi • Tối đa 2MB</p>
+                     </div>
+                   </div>
+
                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                     <ProfileInput label="HỌ VÀ TÊN" value="Đông Triều" icon={<UserIcon size={16} />} />
-                     <ProfileInput label="EMAIL" value={user?.email} icon={<Mail size={16} />} />
-                     <ProfileInput label="SỐ ĐIỆN THOẠI" value="0987 654 321" icon={<Phone size={16} />} />
-                     <ProfileInput label="THÀNH PHỐ" value="Hồ Chí Minh" icon={<MapPin size={16} />} />
+                     <ProfileInput label="HỌ VÀ TÊN" value={profileForm.full_name} onChange={(v) => handleProfileChange('full_name', v)} icon={<UserIcon size={16} />} />
+                     <ProfileInput label="EMAIL" value={user?.email || ''} icon={<Mail size={16} />} disabled />
+                     <ProfileInput label="SỐ ĐIỆN THOẠI" value={profileForm.phone} onChange={(v) => handleProfileChange('phone', v)} icon={<Phone size={16} />} />
+                     <ProfileInput label="THÀNH PHỐ" value={profileForm.city} onChange={(v) => handleProfileChange('city', v)} icon={<MapPin size={16} />} />
                      <div className="md:col-span-2">
-                        <ProfileInput label="ĐỊA CHỈ GIAO HÀNG" value="123 Fashion Street, Ward 10, District 1" />
+                        <ProfileInput label="ĐỊA CHỈ GIAO HÀNG" value={profileForm.address} onChange={(v) => handleProfileChange('address', v)} />
                      </div>
                    </div>
 
                    <div className="pt-10">
-                     <button className="btn bg-black text-white px-12 h-20 rounded-2xl font-black uppercase tracking-[0.2em] shadow-xl hover:scale-105 active:scale-95 transition-all text-xs">
-                        LƯU THAY ĐỔI
+                     <button 
+                       onClick={handleSaveProfile}
+                       disabled={saving}
+                       className="btn bg-black text-white px-12 h-20 rounded-2xl font-black uppercase tracking-[0.2em] shadow-xl hover:scale-105 active:scale-95 transition-all text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                     >
+                        {saving ? 'ĐANG LƯU...' : 'LƯU THAY ĐỔI'}
                      </button>
                    </div>
                 </div>
@@ -278,15 +370,17 @@ const Profile = () => {
   )
 }
 
-function ProfileInput({ label, icon, value }) {
+function ProfileInput({ label, icon, value, onChange, disabled }) {
   return (
     <div className="space-y-4 group">
       <label className="text-[10px] font-black uppercase text-gray-400 tracking-[0.4em] ml-1 italic">{label}</label>
       <div className="relative">
          {icon && <div className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-black transition-colors">{icon}</div>}
          <input 
-           className={`input ${icon ? 'pl-16' : 'px-6'} pr-6 bg-gray-50/50 border border-gray-100 rounded-2xl h-16 text-sm font-bold text-black focus:bg-white transition-all`} 
-           defaultValue={value}
+           className={`input ${icon ? 'pl-16' : 'px-6'} pr-6 bg-gray-50/50 border border-gray-100 rounded-2xl h-16 text-sm font-bold text-black focus:bg-white transition-all ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`} 
+           value={value}
+           onChange={(e) => onChange?.(e.target.value)}
+           disabled={disabled}
          />
       </div>
     </div>

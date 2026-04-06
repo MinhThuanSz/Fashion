@@ -46,9 +46,21 @@ const changePassword = async (req, res, next) => {
   }
 };
 
+const uploadAvatar = async (req, res) => {
+  try {
+    const { avatar } = req.body;
+    if (!avatar) return res.status(400).json({ success: false, message: 'No avatar provided' });
+    const user = await authService.updateProfile(req.user.id, { avatar });
+    res.json({ success: true, message: 'Avatar updated', data: user });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   register,
   login,
   updateProfile,
-  changePassword
+  changePassword,
+  uploadAvatar
 };

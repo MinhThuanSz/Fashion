@@ -49,9 +49,11 @@ export const productsApi = {
 
 // ── Auth ──────────────────────────────────────────────────
 export const authApi = {
-  login:      (credentials) => api.post('/auth/login', credentials),
-  register:   (userData)    => api.post('/auth/register', userData),
-  getProfile: ()            => api.get('/auth/profile'),
+  login:         (credentials) => api.post('/auth/login', credentials),
+  register:      (userData)    => api.post('/auth/register', userData),
+  getProfile:    ()            => api.get('/auth/profile'),
+  updateProfile: (data)        => api.put('/auth/profile', data),
+  uploadAvatar:  (data)        => api.post('/auth/avatar', data),
 }
 
 // ── Orders ────────────────────────────────────────────────

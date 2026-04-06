@@ -28,6 +28,10 @@ const loginRules = [
 
 const updateProfileRules = [
   body('full_name').optional().notEmpty().withMessage('Full name cannot be empty'),
+  body('phone').optional().isMobilePhone().withMessage('Invalid phone number'),
+  body('address').optional(),
+  body('city').optional(),
+  body('avatar').optional().isString().withMessage('Avatar must be a string'),
   validateResult
 ];
 
