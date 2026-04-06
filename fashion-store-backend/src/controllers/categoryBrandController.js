@@ -2,7 +2,7 @@ const { Category, Brand } = require('../models');
 
 // Categories
 const getCategories = async (req, res) => {
-  const categories = await Category.findAll({ where: { status: 1 } });
+  const categories = await Category.findAll({ order: [['name', 'ASC']] });
   res.json(categories);
 };
 
@@ -36,7 +36,8 @@ const deleteCategory = async (req, res) => {
 
 // Brands
 const getBrands = async (req, res) => {
-  const brands = await Brand.findAll({ where: { status: 1 } });
+  // Return ALL brands (no status filter) so admin can see and use all brands
+  const brands = await Brand.findAll({ order: [['name', 'ASC']] });
   res.json(brands);
 };
 

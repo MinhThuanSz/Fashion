@@ -9,13 +9,19 @@ const cartSlice = createSlice({
   initialState,
   reducers: {
     addToCart: (state, action) => {
-      const { id, size, color, quantity } = action.payload
+      // payload shape: { id, variantId, name, price, image, size, color, quantity, stock }
+      // - id: product ID
+      // - variantId: product_variant_id (the real DB row in product_variants)
+      const { id, variantId, size, color, quantity } = action.payload
       const existingIndex = state.items.findIndex(
         (item) => item.id === id && item.size === size && item.color === color
       )
-      
+
       if (existingIndex >= 0) {
-        state.items[existingIndex].quantity += quantity
+        state.items[existingIndex].quantity = Math.min(
+          state.items[existingIndex].quantity + quantity,
+          state.items[existingIndex].stock || 999
+        )
       } else {
         state.items.push(action.payload)
       }

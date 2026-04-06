@@ -38,48 +38,67 @@ const Checkout = () => {
   const handlePlaceOrder = async (e) => {
     e.preventDefault()
     if (cartItems.length === 0) {
-       toast.error('Giỏ hàng của bạn đang trống!')
-       return;
+      toast.error('Giỏ hàng của bạn đang trống!')
+      return;
+    }
+    if (!formData.receiver_name.trim()) {
+      toast.error('Vui lòng nhập họ tên người nhận!')
+      return;
+    }
+    if (!formData.phone.trim()) {
+      toast.error('Vui lòng nhập số điện thoại!')
+      return;
+    }
+    if (!formData.shipping_address.trim()) {
+      toast.error('Vui lòng nhập địa chỉ giao hàng!')
+      return;
     }
 
     setLoading(true)
     try {
-       // Since frontend is using mocked product details, we simulate the product_variant_id mapping 
-       // by using item.id directly ensuring it sends a numeric ID to the backend variant check.
-       // In a fully integrated app, ProductDetail would store actual variant IDs.
-       const payload = {
-          receiver_name: formData.receiver_name,
-          phone: formData.phone,
-          shipping_address: `${formData.shipping_address}, ${formData.city}`,
-          payment_method: paymentMethod.toUpperCase(),
-          items: cartItems.map(item => ({
-             product_variant_id: item.id || 1, 
-             quantity: item.quantity,
-             unit_price: item.price,
-             subtotal: item.price * item.quantity
-          }))
-       }
+      const payload = {
+        receiver_name:    formData.receiver_name.trim(),
+        phone:            formData.phone.trim(),
+        shipping_address: `${formData.shipping_address.trim()}${formData.city ? `, ${formData.city.trim()}` : ''}`,
+        payment_method:   paymentMethod.toUpperCase(),
+        // Send both product_id and variantId so backend can do smart lookup
+        items: cartItems.map(item => ({
+          product_variant_id: item.variantId || null,  // real variant ID if stored
+          product_id:         item.id,                 // product ID as fallback
+          quantity:           item.quantity,
+          unit_price:         item.price,
+          subtotal:           item.price * item.quantity
+        }))
+      }
 
-       // Import or import dynamically ordersApi if not on top. Assumes ordersApi is available.
-       const { ordersApi } = await import('../services/api')
-       await ordersApi.create(payload)
+      const { ordersApi } = await import('../services/api')
+      await ordersApi.create(payload)
 
-       setIsOrdered(true)
-       dispatch(clearCart())
-       toast.success('ĐẶT HÀNG THÀNH CÔNG! Xin cám ơn quý khách.', { duration: 5000, icon: '🎉' })
+      setIsOrdered(true)
+      dispatch(clearCart())
+      toast.success('ĐẶT HÀNG THÀNH CÔNG! Cảm ơn quý khách.', { duration: 5000, icon: '🎉' })
     } catch (error) {
-       console.error('Checkout API Error:', error);
-       const apiMsg = error.response?.data?.message || error.response?.data?.error;
-       
-       if (apiMsg) {
-          toast.error(`Lời nhắn từ hệ thống: ${apiMsg}`);
-       } else {
-          toast.error('Đặt hàng không thành công. Một hoặc nhiều sản phẩm trong giỏ hàng có thể không còn khả dụng.');
-       }
+      console.error('Checkout Error:', error)
+      const apiMsg = error.response?.data?.message || error.response?.data?.error
+
+      // Show friendly Vietnamese message — strip any raw technical IDs
+      if (apiMsg) {
+        // If the message contains raw variant IDs, replace with friendly version
+        const friendlyMsg = apiMsg.includes('Variant ID')
+          ? 'Một sản phẩm trong giỏ hàng hiện không còn khả dụng. Vui lòng kiểm tra lại giỏ hàng.'
+          : apiMsg
+        toast.error(friendlyMsg, { duration: 6000 })
+      } else {
+        toast.error(
+          'Đặt hàng không thành công. Một hoặc nhiều sản phẩm có thể không còn trong kho.',
+          { duration: 6000 }
+        )
+      }
     } finally {
-       setLoading(false)
+      setLoading(false)
     }
   }
+
 
   if (isOrdered) {
     return (
