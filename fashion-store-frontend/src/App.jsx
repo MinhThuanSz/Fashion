@@ -22,6 +22,7 @@ import OrderManagement from './pages/admin/OrderManagement'
 import UserManagement from './pages/admin/UserManagement'
 import BrandManagement from './pages/admin/BrandManagement'
 import SettingsAdmin from './pages/admin/Settings'
+import RevenueAnalytics from './pages/admin/RevenueAnalytics'
 
 // Auth Guard
 import ProtectedRoute from './components/auth/ProtectedRoute'
@@ -80,7 +81,7 @@ function App() {
           <Route path="brands" element={<BrandManagement />} />
           <Route path="settings" element={<SettingsAdmin />} />
           <Route path="categories" element={<div className="p-10 font-black text-4xl">CATEGORY PAGE</div>} />
-          <Route path="analytics" element={<div className="p-10 font-black text-4xl">ANALYTICS PAGE</div>} />
+          <Route path="analytics" element={<RevenueAnalytics />} />
         </Route>
       </Routes>
 

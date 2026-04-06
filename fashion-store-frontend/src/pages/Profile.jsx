@@ -8,7 +8,7 @@ import {
   ChevronDown, X, Camera
 } from 'lucide-react'
 import { logout, updateUser } from '../store/slices/authSlice'
-import { authApi } from '../services/api'
+import { authApi, ordersApi } from '../services/api'
 import { motion, AnimatePresence } from 'framer-motion'
 import { UI_TEXT } from '../constants/text'
 import toast from 'react-hot-toast'
@@ -104,13 +104,10 @@ const Profile = () => {
   const fetchMyOrders = async () => {
     try {
       setLoadingOrders(true)
-      const { ordersApi } = await import('../services/api');
-      const res = await ordersApi.getMyOrders();
-      if (res.success) {
-         setOrders(res.data)
-      }
+      const res = await ordersApi.getMyOrders()
+      setOrders(res.data || [])
     } catch (error) {
-       console.error('Fetch Orders Error:', error);
+       console.error('Fetch Orders Error:', error)
        toast.error('Không thể tải dữ liệu đơn hàng')
     } finally {
       setLoadingOrders(false)

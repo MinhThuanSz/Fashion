@@ -20,8 +20,8 @@ const OrderManagement = () => {
     try {
       setLoading(true)
       const res = await ordersApi.getAll()
-      // Backend returns { success, data: [] }
-      setOrders(Array.isArray(res) ? res : (res.data || []))
+      // Interceptor returns response.data already: { success: true, data: [] }
+      setOrders(res.data || [])
     } catch (error) {
       toast.error('Lỗi khi tải danh sách đơn hàng')
     } finally {
