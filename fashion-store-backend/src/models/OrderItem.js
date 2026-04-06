@@ -7,13 +7,15 @@ const OrderItem = sequelize.define('OrderItem', {
     primaryKey: true,
     autoIncrement: true
   },
-  order_id: {
+  orderId: {
     type: DataTypes.INTEGER,
-    allowNull: false
+    allowNull: false,
+    field: 'order_id'
   },
-  product_variant_id: {
+  productVariantId: {
     type: DataTypes.INTEGER,
-    allowNull: false
+    allowNull: false,
+    field: 'product_variant_id'
   },
   quantity: {
     type: DataTypes.INTEGER,

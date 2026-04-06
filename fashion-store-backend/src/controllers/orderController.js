@@ -5,6 +5,7 @@ const createOrder = async (req, res, next) => {
     const order = await orderService.createOrder(req.user.id, req.body);
     res.status(201).json({ success: true, message: 'Order placed successfully', data: order });
   } catch (error) {
+    console.error('[Backend Order Controller Error]:', error.message, error.stack);
     res.status(400).json({ success: false, message: error.message });
   }
 };
@@ -21,8 +22,8 @@ const getMyOrders = async (req, res, next) => {
 const getOrderById = async (req, res, next) => {
   try {
     const order = await orderService.getOrderById(
-      req.params.id, 
-      req.user.id, 
+      req.params.id,
+      req.user.id,
       req.user.Role.name === 'Admin'
     );
     res.json({ success: true, message: 'Order detail fetched', data: order });
@@ -34,8 +35,8 @@ const getOrderById = async (req, res, next) => {
 const updateOrderStatus = async (req, res, next) => {
   try {
     const order = await orderService.updateOrderStatus(
-      req.params.id, 
-      req.body.status, 
+      req.params.id,
+      req.body.status,
       req.body.payment_status
     );
     res.json({ success: true, message: 'Order status updated', data: order });

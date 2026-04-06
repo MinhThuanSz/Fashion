@@ -48,7 +48,8 @@ const orderSchema = Joi.object({
   payment_method: Joi.string().required(),
   items: Joi.array().items(
     Joi.object({
-      product_variant_id: Joi.number().required(),
+      product_variant_id: Joi.number().allow(null, '').optional(),
+      product_id: Joi.number().optional(),
       quantity: Joi.number().min(1).required(),
       unit_price: Joi.number().min(0).required(),
       subtotal: Joi.number().min(0).required()

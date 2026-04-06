@@ -7,9 +7,11 @@ const Order = sequelize.define('Order', {
     primaryKey: true,
     autoIncrement: true
   },
-  user_id: {
+  // Sử dụng userId làm thuộc tính chuẩn (Sequelize sẽ tự ánh xạ sang user_id nhờ underscored: true)
+  userId: {
     type: DataTypes.INTEGER,
-    allowNull: false
+    allowNull: false,
+    field: 'user_id'
   },
   receiver_name: {
     type: DataTypes.STRING(100),
@@ -32,7 +34,7 @@ const Order = sequelize.define('Order', {
   },
   order_status: {
     type: DataTypes.STRING(50),
-    defaultValue: 'Pending' // Pending, Confirmed, Shipping, Success, Cancelled
+    defaultValue: 'PENDING'
   },
   payment_method: {
     type: DataTypes.STRING(50),
@@ -40,7 +42,7 @@ const Order = sequelize.define('Order', {
   },
   payment_status: {
     type: DataTypes.STRING(50),
-    defaultValue: 'Unpaid' // Unpaid, Paid, Refunded
+    defaultValue: 'UNPAID'
   }
 }, {
   tableName: 'orders',
