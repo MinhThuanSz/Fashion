@@ -88,7 +88,7 @@ router.post('/', protect, async (req, res) => {
   }
 });
 
-router.get('/my', protect, async (req, res) => {
+router.get('/my-orders', protect, async (req, res) => {
   try {
     const orders = await Order.findAll({
       where: { userId: req.user.id },
@@ -99,7 +99,7 @@ router.get('/my', protect, async (req, res) => {
           include: [{ 
             model: ProductVariant, 
             as: 'variant',
-            include: [{ model: Product }] // Include product to get name/price
+            include: [{ model: Product, as: 'product' }]
           }]
         }
       ],

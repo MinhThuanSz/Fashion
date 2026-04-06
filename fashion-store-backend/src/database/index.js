@@ -53,17 +53,17 @@ CartItem.belongsTo(Cart, { foreignKey: 'cart_id' });
 ProductVariant.hasMany(CartItem, { foreignKey: 'product_variant_id' });
 CartItem.belongsTo(ProductVariant, { foreignKey: 'product_variant_id', as: 'variant' });
 
-// User - Order (Sử dụng userId làm foreignKey đồng nhất với model Order)
-User.hasMany(Order, { foreignKey: 'userId' });
-Order.belongsTo(User, { foreignKey: 'userId', as: 'User' });
+// User - Order (Sử dụng user_id làm foreignKey)
+User.hasMany(Order, { foreignKey: 'user_id' });
+Order.belongsTo(User, { foreignKey: 'user_id', as: 'User' });
 
-// Order - OrderItem (Sử dụng orderId làm foreignKey đồng nhất với model OrderItem)
-Order.hasMany(OrderItem, { foreignKey: 'orderId', as: 'items' });
-OrderItem.belongsTo(Order, { foreignKey: 'orderId' });
+// Order - OrderItem (Sử dụng order_id làm foreignKey)
+Order.hasMany(OrderItem, { foreignKey: 'order_id', as: 'items' });
+OrderItem.belongsTo(Order, { foreignKey: 'order_id' });
 
-// ProductVariant - OrderItem (Sử dụng productVariantId làm foreignKey)
-ProductVariant.hasMany(OrderItem, { foreignKey: 'productVariantId' });
-OrderItem.belongsTo(ProductVariant, { foreignKey: 'productVariantId', as: 'variant' });
+// ProductVariant - OrderItem (Sử dụng product_variant_id làm foreignKey)
+ProductVariant.hasMany(OrderItem, { foreignKey: 'product_variant_id' });
+OrderItem.belongsTo(ProductVariant, { foreignKey: 'product_variant_id', as: 'variant' });
 
 module.exports = {
   sequelize,
