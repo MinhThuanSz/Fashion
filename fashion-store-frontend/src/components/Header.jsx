@@ -120,7 +120,7 @@ const Header = () => {
                     <div className="space-y-1">
                       <MenuButton to="/profile" icon={<Settings size={18} />} label={UI_TEXT.profile.settings} onClick={() => setIsUserMenuOpen(false)} />
                       <MenuButton to="/profile?tab=orders" icon={<Package size={18} />} label={UI_TEXT.header.myOrders} onClick={() => setIsUserMenuOpen(false)} />
-                      {['admin@novakit.com', 'admin@antigrav.com'].includes(user?.email) && (
+                      {user?.role === 'Admin' && (
                          <MenuButton to="/admin" icon={<ShieldCheck size={18} />} label={UI_TEXT.common.admin} onClick={() => setIsUserMenuOpen(false)} variant="primary" />
                       )}
                       <button 

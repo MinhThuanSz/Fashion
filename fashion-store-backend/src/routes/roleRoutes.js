@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { Role } = require('../models');
+const { Role } = require('../database');
 const { protect, admin } = require('../middlewares/authMiddleware');
 
 // GET /api/roles - Get all roles (admin only)

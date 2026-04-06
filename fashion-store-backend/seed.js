@@ -1,4 +1,4 @@
-const { sequelize, Role, Category, Brand, Product, User, Size, Color, ProductVariant } = require('./src/models');
+const { sequelize, Role, Category, Brand, Product, User, Size, Color, ProductVariant } = require('./src/database');
 require('dotenv').config();
 
 const seed = async () => {
