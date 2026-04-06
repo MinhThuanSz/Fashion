@@ -34,9 +34,9 @@ const seed = async () => {
 
     // 4. Products (Khớp với Frontend data/products.js)
     const productsData = [
-      { id: 1, name: 'Nike Air Max 270 Premium', price: 3850000, category_id: catShoes.id, brand_id: brandNike.id },
-      { id: 2, name: 'Adidas Ultraboost 22 Đen', price: 4500000, category_id: catShoes.id, brand_id: brandNike.id },
-      { id: 3, name: 'Áo Thun Oversized Essential', price: 450000, category_id: catClothes.id, brand_id: brandNike.id },
+      { id: 1, name: 'Nike Air Max 270 Premium', price: 3850000, category_id: catShoes.id, brand_id: brandNike.id, image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600' },
+      { id: 2, name: 'Adidas Ultraboost 22 Đen', price: 4500000, category_id: catShoes.id, brand_id: brandNike.id, image: 'https://images.unsplash.com/photo-1587563871167-1ee9c731aefb?w=600' },
+      { id: 3, name: 'Áo Thun Oversized Essential', price: 450000, category_id: catClothes.id, brand_id: brandNike.id, image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=600' },
     ];
 
     // Tạo Sizes & Colors để có variant

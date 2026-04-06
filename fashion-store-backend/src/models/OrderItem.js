@@ -21,9 +21,10 @@ const OrderItem = sequelize.define('OrderItem', {
     type: DataTypes.INTEGER,
     allowNull: false
   },
-  unit_price: {
+  unitPrice: {
     type: DataTypes.DECIMAL(18, 2),
-    allowNull: false
+    allowNull: false,
+    field: 'unit_price'
   },
   subtotal: {
     type: DataTypes.DECIMAL(18, 2),

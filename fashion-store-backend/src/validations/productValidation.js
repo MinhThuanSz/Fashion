@@ -46,15 +46,16 @@ const orderSchema = Joi.object({
   shipping_address: Joi.string().required(),
   note: Joi.string().allow('', null),
   payment_method: Joi.string().required(),
+  total_amount: Joi.number().min(0).optional(), // Cho phép tổng tiền gửi từ frontend
   items: Joi.array().items(
     Joi.object({
       product_variant_id: Joi.number().allow(null, '').optional(),
       product_id: Joi.number().optional(),
       quantity: Joi.number().min(1).required(),
-      unit_price: Joi.number().min(0).required(),
-      subtotal: Joi.number().min(0).required()
+      unit_price: Joi.number().min(0).optional(), // Sửa thành optional để linh hoạt
+      subtotal: Joi.number().min(0).optional()    // Sửa thành optional để linh hoạt
     })
-  ).required()
+  ).optional() // Chuyển sang optional nếu dùng giỏ hàng DB
 });
 
 module.exports = {

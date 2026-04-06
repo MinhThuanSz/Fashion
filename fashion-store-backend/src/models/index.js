@@ -31,7 +31,7 @@ ProductImage.belongsTo(Product, { foreignKey: 'product_id' });
 
 // Product - ProductVariant
 Product.hasMany(ProductVariant, { foreignKey: 'product_id', as: 'variants' });
-ProductVariant.belongsTo(Product, { foreignKey: 'product_id' });
+ProductVariant.belongsTo(Product, { foreignKey: 'product_id', as: 'product' });
 
 // Size - ProductVariant
 Size.hasMany(ProductVariant, { foreignKey: 'size_id' });
@@ -53,11 +53,11 @@ CartItem.belongsTo(Cart, { foreignKey: 'cart_id' });
 ProductVariant.hasMany(CartItem, { foreignKey: 'product_variant_id' });
 CartItem.belongsTo(ProductVariant, { foreignKey: 'product_variant_id', as: 'variant' });
 
-// User - Order
+// User - Order (Fix: Map correctly to userId attribute)
 User.hasMany(Order, { foreignKey: 'user_id' });
-Order.belongsTo(User, { foreignKey: 'user_id' });
+Order.belongsTo(User, { foreignKey: 'user_id', as: 'User' });
 
-// Order - OrderItem
+// Order - OrderItem (Fix: Use order_id column for association)
 Order.hasMany(OrderItem, { foreignKey: 'order_id', as: 'items' });
 OrderItem.belongsTo(Order, { foreignKey: 'order_id' });
 

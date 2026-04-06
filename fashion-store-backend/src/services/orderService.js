@@ -1,107 +1,125 @@
-const { Order, OrderItem, ProductVariant, Product, Cart, CartItem } = require('../models');
+const { Order, OrderItem, ProductVariant, User, Cart, CartItem, Product } = require('../models');
 const { sequelize } = require('../config/db');
 
-const createOrder = async (userId, data) => {
-  const receiver_name = data.receiver_name || data.hoTen || data.fullName || data.name;
-  const phone = data.phone || data.sdt || data.phoneNumber;
-  const shipping_address = data.shipping_address || data.address || data.diaChi;
-  const note = data.note || '';
-  const payment_method = data.payment_method || 'COD';
-  const inputItems = data.items || [];
+const getMyOrders = async (userId) => {
+  try {
+    const orders = await Order.findAll({
+      where: { userId: userId },
+      include: [
+        { 
+          model: OrderItem, 
+          as: 'items',
+          include: [
+            { 
+              model: ProductVariant, 
+              as: 'variant', 
+              include: [{ model: Product, as: 'product' }] 
+            }
+          ] 
+        }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
 
+    // Chuyển đổi dữ liệu sang dạng phẳng gọn nhẹ cho Frontend dễ dùng
+    return orders.map(order => {
+      const orderJson = order.toJSON();
+      // Lấy ảnh của sản phẩm đầu tiên làm ảnh đại diện đơn hàng
+      const firstItem = orderJson.items?.[0];
+      const productImage = firstItem?.variant?.product?.image || firstItem?.variant?.product?.images?.[0] || null;
+      
+      return {
+        ...orderJson,
+        representativeImage: productImage
+      };
+    });
+  } catch (error) {
+    console.error('Service getMyOrders Error:', error);
+    throw error;
+  }
+};
+
+const createOrder = async (userId, data) => {
+  const receiver_name    = (data.receiver_name || data.hoTen || '').toString().trim();
+  const phone            = (data.phone || '').toString().trim();
+  const shipping_address = (data.shipping_address || '').toString().trim();
+  const note             = data.note || '';
+  const payment_method   = (data.payment_method || 'COD').toUpperCase();
+  const items            = data.items || [];
+
+  if (!userId) throw new Error('Vui lòng đăng nhập');
+  
   const transaction = await sequelize.transaction();
 
   try {
-    let orderItemsInput = inputItems;
+    let orderItemsInput = items;
     let cart = null;
 
-    // CHIẾN THUẬT MỚI: Luôn ưu tiên lấy giỏ hàng từ Database để đảm bảo có đầy đủ ID chuẩn
-    cart = await Cart.findOne({ 
-      where: { user_id: userId }, 
-      include: [{ model: CartItem, as: 'items' }] 
-    });
-
-    // Nếu Frontend gửi items rỗng HOẶC items thiếu ID quan trọng, ta dùng Cart từ DB
-    const firstItem = inputItems[0];
-    const isFrontendDataMissingID = firstItem && !(firstItem.id || firstItem.variantId || firstItem.product_variant_id || firstItem.product_id);
-
-    if ((!orderItemsInput || orderItemsInput.length === 0 || isFrontendDataMissingID) && cart) {
-      if (!cart.items || cart.items.length === 0) throw new Error('Giỏ hàng của bạn đang trống.');
+    if (orderItemsInput.length === 0) {
+      cart = await Cart.findOne({ where: { user_id: userId }, include: [{ model: CartItem, as: 'items' }] });
+      if (!cart || cart.items.length === 0) throw new Error('Giỏ hàng trống');
       orderItemsInput = cart.items.map(item => ({
-        product_variant_id: item.product_variant_id,
+        productVariantId: item.product_variant_id,
         quantity: item.quantity,
-        unit_price: item.unit_price,
+        unitPrice: item.unit_price,
         subtotal: item.subtotal
       }));
     }
 
-    if (!orderItemsInput || orderItemsInput.length === 0) {
-      throw new Error('Không có sản phẩm nào để đặt hàng.');
-    }
-
-    const finalItems = [];
+    const resolvedItems = [];
     for (const item of orderItemsInput) {
-      const vId = item.product_variant_id || item.variant_id || item.variantId || item.id;
-      const pId = item.product_id || item.productId;
+      // Chấp nhận cả variantId (frontend mới) và product_variant_id (database/api cũ)
+      let variantId = item.product_variant_id || item.productVariantId || item.variantId;
+      let variant = await ProductVariant.findByPk(variantId);
       
-      let variant = null;
-      if (vId) {
-        variant = await ProductVariant.findByPk(vId);
-        if (!variant) variant = await ProductVariant.findOne({ where: { product_id: vId } });
-      }
-      if (!variant && pId) {
-        variant = await ProductVariant.findOne({ where: { product_id: pId } });
+      // Fallback cho dữ liệu Mock nếu không có variantId
+      if (!variant && item.product_id) {
+        variant = await ProductVariant.findOne({ where: { product_id: item.product_id } });
       }
 
-      if (!variant) {
-        // Fallback cuối cùng: Nếu vẫn không thấy, lấy đại variant đầu tiên (để tránh block người dùng demo)
-        variant = await ProductVariant.findOne({ order: [['id', 'ASC']] });
-      }
+      if (!variant) throw new Error('Sản phẩm không tồn tại trong hệ thống');
 
-      if (!variant) throw new Error('Hệ thống hiện không có sản phẩm khả dụng.');
-
-      const price = Number(item.unit_price || variant.extra_price || 0);
-      finalItems.push({
+      resolvedItems.push({
         variantId: variant.id,
-        quantity: Number(item.quantity) || 1,
-        unitPrice: price,
-        subtotal: Number(item.subtotal) || (price * (Number(item.quantity) || 1)),
+        quantity: item.quantity,
+        unitPrice: item.unit_price || item.unitPrice || 0,
+        subtotal: item.subtotal || ((item.unit_price || item.unitPrice || 0) * item.quantity),
         variant
       });
     }
 
-    const total_amount = finalItems.reduce((acc, i) => acc + Number(i.subtotal), 0);
+    const totalSpentInItems = resolvedItems.reduce((acc, item) => acc + Number(item.subtotal), 0);
+    // Ưu tiên total_amount từ Frontend (đã áp mã giảm giá rank), nếu không có mới dùng tổng tính từ items.
+    const final_total_amount = data.total_amount ? Number(data.total_amount) : totalSpentInItems;
 
     const order = await Order.create({
-      userId: userId,
+      userId,
       receiver_name,
       phone,
       shipping_address,
       note,
-      total_amount,
+      total_amount: final_total_amount,
       order_status: 'PENDING',
       payment_method,
       payment_status: 'UNPAID'
     }, { transaction });
 
-    for (const item of finalItems) {
+    for (const item of resolvedItems) {
       await OrderItem.create({
         orderId: order.id,
         productVariantId: item.variantId,
         quantity: item.quantity,
-        unit_price: item.unitPrice,
+        unitPrice: item.unitPrice,
         subtotal: item.subtotal
       }, { transaction });
 
-      item.variant.stock -= item.quantity;
-      await item.variant.save({ transaction });
+      if (item.variant.stock >= item.quantity) {
+        item.variant.stock -= item.quantity;
+        await item.variant.save({ transaction });
+      }
     }
 
-    if (cart) {
-      await CartItem.destroy({ where: { cart_id: cart.id }, transaction });
-      cart.total_amount = 0;
-      await cart.save({ transaction });
-    }
+    if (cart) await CartItem.destroy({ where: { cart_id: cart.id }, transaction });
 
     await transaction.commit();
     return order;
@@ -111,36 +129,37 @@ const createOrder = async (userId, data) => {
   }
 };
 
-const getMyOrders = async (userId) => {
-  return await Order.findAll({
-    where: { userId: userId }, // Sửa từ user_id sang userId
-    include: [{ model: OrderItem, as: 'items' }],
-    order: [['createdAt', 'DESC']]
-  });
-};
-
 const getOrderById = async (orderId, userId, isAdmin) => {
-  const order = await Order.findByPk(orderId, { include: [{ model: OrderItem, as: 'items' }] });
-  if (!order) throw new Error('Không thấy đơn hàng');
-  if (order.userId !== userId && !isAdmin) throw new Error('Hành động không hợp lệ');
+  const order = await Order.findByPk(orderId, {
+    include: [
+      { 
+        model: OrderItem, 
+        as: 'items',
+        include: [{ model: ProductVariant, as: 'variant', include: ['product'] }] 
+      }
+    ]
+  });
+
+  if (!order) throw new Error('Không tìm thấy đơn hàng');
+  if (order.userId !== userId && !isAdmin) throw new Error('Không có quyền truy cập');
   return order;
 };
 
 const updateOrderStatus = async (orderId, status, paymentStatus) => {
   const order = await Order.findByPk(orderId);
-  if (!order) throw new Error('Không thấy đơn hàng');
+  if (!order) throw new Error('Order not found');
   order.order_status = status;
   if (paymentStatus) order.payment_status = paymentStatus;
-  if (status === 'SUCCESS' && order.payment_status !== 'PAID') order.payment_status = 'PAID';
   await order.save();
   return order;
 };
 
 const getAllOrders = async () => {
+  const { OrderItem, User } = require('../models');
   return await Order.findAll({
     include: [
       { model: OrderItem, as: 'items' },
-      { model: require('../models').User, as: 'User', attributes: ['full_name', 'email', 'phone'] }
+      { model: User, as: 'User', attributes: ['full_name', 'email', 'phone'] }
     ],
     order: [['createdAt', 'DESC']]
   });

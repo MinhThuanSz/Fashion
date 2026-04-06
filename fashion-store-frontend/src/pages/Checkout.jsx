@@ -16,10 +16,42 @@ const Checkout = () => {
   const dispatch = useDispatch()
   const navigate = useNavigate()
 
+  const [orders, setOrders] = useState([])
+  const [loadingOrders, setLoadingOrders] = useState(true)
+
+  React.useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const { ordersApi } = await import('../services/api')
+        const res = await ordersApi.getMyOrders()
+        if (res.success) setOrders(res.data)
+      } catch (err) {
+        console.error('Error fetching orders for discount:', err)
+      } finally {
+        setLoadingOrders(false)
+      }
+    }
+    fetchOrders()
+  }, [])
+
+  const totalSpent = orders.reduce((acc, order) => acc + Number(order.total_amount || 0), 0)
+  const levels = [
+    { name: 'Đồng', threshold: 0, discount: 0 },
+    { name: 'Bạc', threshold: 2000000, discount: 0.01 },
+    { name: 'Vàng', threshold: 4000000, discount: 0.03 },
+    { name: 'Bạch Kim', threshold: 6000000, discount: 0.05 },
+    { name: 'Kim Cương', threshold: 8000000, discount: 0.07 },
+    { name: 'Cao Thủ', threshold: 10000000, discount: 0.10 },
+    { name: 'Thách Đấu', threshold: 12000000, discount: 0.15 },
+  ]
+  const currentLevel = [...levels].reverse().find(l => totalSpent >= l.threshold) || levels[0]
+  const discountRate = currentLevel.discount
+
   const subtotal = cartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0)
+  const discountAmount = subtotal * discountRate
   const shipping = subtotal > 1000000 ? 0 : 35000
-  const tax = subtotal * 0.1
-  const total = subtotal + shipping + tax
+  const tax = (subtotal - discountAmount) * 0.1
+  const total = subtotal - discountAmount + shipping + tax
 
   const [loading, setLoading] = useState(false)
   const [isOrdered, setIsOrdered] = useState(false)
@@ -61,13 +93,13 @@ const Checkout = () => {
         phone: formData.phone.trim(),
         shipping_address: `${formData.shipping_address.trim()}${formData.city ? `, ${formData.city.trim()}` : ''}`,
         payment_method: paymentMethod.toUpperCase(),
-        // Send both product_id and variantId so backend can do smart lookup
+        total_amount: total,
         items: cartItems.map(item => ({
-          product_variant_id: item.variantId || null,  // real variant ID if stored
-          product_id: item.id,                 // product ID as fallback
+          product_variant_id: item.variantId || null,
+          product_id: item.id,
           quantity: item.quantity,
-          unit_price: item.price,
-          subtotal: item.price * item.quantity
+          unit_price: item.price * (1 - discountRate), // Lưu giá đã giảm cho từng món
+          subtotal: (item.price * (1 - discountRate)) * item.quantity
         }))
       }
 
@@ -258,9 +290,19 @@ const Checkout = () => {
                     <span>{UI_TEXT.cart.subtotal}</span>
                     <span className="text-white not-italic font-bold">{subtotal.toLocaleString('vi-VN')}đ</span>
                   </div>
+                  {discountAmount > 0 && (
+                    <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-green-400 italic group/disc">
+                      <span>GIẢM GIÁ RANK {currentLevel.name.toUpperCase()} ({(discountRate * 100).toFixed(0)}%)</span>
+                      <span className="not-italic font-bold animate-pulse">-{discountAmount.toLocaleString('vi-VN')}đ</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-gray-400 italic">
                     <span>{UI_TEXT.cart.shipping}</span>
                     <span className="text-white not-italic font-black text-green-400">{shipping === 0 ? UI_TEXT.cart.free : `${shipping.toLocaleString('vi-VN')}đ`}</span>
+                  </div>
+                  <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-gray-400 italic">
+                    <span>THUẾ (10%)</span>
+                    <span className="text-white not-italic font-bold">{tax.toLocaleString('vi-VN')}đ</span>
                   </div>
                   <div className="pt-8 border-t border-white/10 flex justify-between items-end">
                     <span className="text-xs font-black uppercase tracking-[0.3em] text-gray-400">{UI_TEXT.cart.total}</span>

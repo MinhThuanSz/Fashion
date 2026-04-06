@@ -15,6 +15,7 @@ const getMyOrders = async (req, res, next) => {
     const orders = await orderService.getMyOrders(req.user.id);
     res.json({ success: true, message: 'Orders fetched', data: orders });
   } catch (error) {
+    console.error('[Backend Get My Orders Error]:', error.message, error.stack);
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -28,6 +29,7 @@ const getOrderById = async (req, res, next) => {
     );
     res.json({ success: true, message: 'Order detail fetched', data: order });
   } catch (error) {
+    console.error('[Backend Get Order By Id Error]:', error.message, error.stack);
     res.status(404).json({ success: false, message: error.message });
   }
 };
