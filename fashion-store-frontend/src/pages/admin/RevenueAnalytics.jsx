@@ -16,7 +16,7 @@ const COLORS = ['#0ea5e9', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'
 
 const RevenueAnalytics = () => {
   const [loading, setLoading] = useState(true)
-  const [filterPeriod, setFilterPeriod] = useState('month') // day, week, month, year
+  const [filterPeriod, setFilterPeriod] = useState('month') // day, month, year
   const [revenueData, setRevenueData] = useState([])
   const [summary, setSummary] = useState(null)
   const [topProducts, setTopProducts] = useState([])
@@ -29,18 +29,66 @@ const RevenueAnalytics = () => {
   const fetchAnalytics = async () => {
     try {
       setLoading(true)
-      const [summaryRes, revenueRes] = await Promise.all([
+      const revenueCall = filterPeriod === 'day'
+        ? adminApi.getRevenueByDay()
+        : filterPeriod === 'year'
+          ? adminApi.getRevenueByYear()
+          : adminApi.getRevenueByMonth()
+
+      const results = await Promise.allSettled([
         adminApi.getSummary(),
-        filterPeriod === 'month' ? adminApi.getRevenueByMonth() : adminApi.getRevenueByDay()
+        revenueCall,
+        adminApi.getTopProducts(),
+        adminApi.getRevenueByCategory()
       ])
 
-      if (summaryRes.success) setSummary(summaryRes.data)
-      if (revenueRes.success) setRevenueData(revenueRes.data)
-      
-      // Generate mock category data
-      generateCategoryData()
+      const [summaryRes, revenueRes, productsRes, categoryRes] = results
+
+      if (summaryRes.status === 'fulfilled' && summaryRes.value.success) {
+        setSummary(summaryRes.value.data)
+      }
+
+      if (revenueRes.status === 'fulfilled' && revenueRes.value.success) {
+        setRevenueData(revenueRes.value.data.map(item => ({
+          ...item,
+          date: item.date || item.month || item.year || String(item.createdAt || '')
+        })))
+      } else {
+        console.warn('Revenue data load failed:', revenueRes)
+      }
+
+      if (productsRes.status === 'fulfilled' && productsRes.value.success) {
+        setTopProducts(productsRes.value.data.map(prod => ({
+          ...prod,
+          quantitySold: Number(prod.quantitySold || prod.quantity_sold || 0),
+          totalRevenue: Number(prod.totalRevenue || prod.total_revenue || 0),
+          avgPrice: Number(prod.totalRevenue || prod.total_revenue || 0) / Number(prod.quantitySold || prod.quantity_sold || 1)
+        })))
+      } else {
+        console.warn('Top products load failed:', productsRes)
+      }
+
+      if (categoryRes.status === 'fulfilled' && categoryRes.value.success) {
+        const categories = categoryRes.value.data.map(cat => ({
+          name: cat.categoryName || cat.category_name || cat.name,
+          value: Number(cat.revenue || cat.totalRevenue || 0)
+        }))
+        const total = categories.reduce((sum, item) => sum + item.value, 0) || 1
+        setCategoryRevenue(categories.map(cat => ({
+          ...cat,
+          percentage: Math.round((cat.value / total) * 100)
+        })))
+      } else {
+        console.warn('Category revenue load failed:', categoryRes)
+      }
+
+      const hasAnySuccess = [summaryRes, revenueRes, productsRes, categoryRes].some(result => result.status === 'fulfilled' && result.value?.success)
+      if (!hasAnySuccess) {
+        throw new Error('Không thể tải dữ liệu phân tích doanh số từ máy chủ.')
+      }
     } catch (error) {
-      toast.error('Lỗi tải dữ liệu phân tích doanh số')
+      const errorMessage = error.response?.data?.message || error.message || 'Lỗi tải dữ liệu phân tích doanh số'
+      toast.error(errorMessage)
       console.error('Analytics fetch error:', error)
     } finally {
       setLoading(false)
@@ -96,7 +144,7 @@ const RevenueAnalytics = () => {
 
       {/* Filter Period */}
       <div className="flex gap-2 bg-white p-4 rounded-2xl border border-gray-100">
-        {['day', 'week', 'month', 'year'].map(period => (
+        {['day', 'month', 'year'].map(period => (
           <button
             key={period}
             onClick={() => setFilterPeriod(period)}
@@ -160,6 +208,9 @@ const RevenueAnalytics = () => {
           </p>
           <p className="text-xs text-purple-700 mt-2">Đ</p>
         </motion.div>
+      </div>
+      <div className="text-xs uppercase tracking-widest text-gray-400 px-4">
+        Doanh thu chỉ tính cho đơn hàng đã thanh toán hoặc đã hoàn tất. Khi đơn hàng thanh toán thành công, giá trị này sẽ được cộng vào báo cáo doanh số.
       </div>
 
       {/* Charts Grid */}
@@ -232,6 +283,85 @@ const RevenueAnalytics = () => {
               <Tooltip formatter={(value) => `${(value / 1000000).toFixed(1)}M đ`} />
             </PieChart>
           </ResponsiveContainer>
+        </motion.div>
+
+        {/* Top Products */}
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.2 }}
+          className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm lg:col-span-2"
+        >
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-lg font-bold uppercase tracking-wider">Top Sản Phẩm Bán Chạy</h2>
+              <p className="text-sm text-gray-500">Dữ liệu doanh thu theo sản phẩm từ các đơn hàng thành công</p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs uppercase tracking-widest text-gray-400">Sản phẩm</p>
+              <p className="text-2xl font-black text-gray-900">{topProducts.length}</p>
+              {topProducts.length > 0 && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Giá TB: {(topProducts.reduce((sum, prod) => sum + prod.avgPrice, 0) / topProducts.length / 1000).toFixed(0)}K đ
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Product Price Chart */}
+          {topProducts.length > 0 && (
+            <div className="mb-8">
+              <h3 className="text-sm font-bold uppercase tracking-wider mb-4 text-gray-700">Phân Phối Giá Sản Phẩm</h3>
+              <ResponsiveContainer width="100%" height={120}>
+                <BarChart data={topProducts.slice(0, 5)}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                  <XAxis 
+                    dataKey="productName" 
+                    stroke="#9ca3af" 
+                    fontSize={10}
+                    angle={-45}
+                    textAnchor="end"
+                    height={60}
+                  />
+                  <YAxis stroke="#9ca3af" fontSize={10} />
+                  <Tooltip 
+                    formatter={(value) => `${(value / 1000).toFixed(0)}K đ`}
+                    labelStyle={{ fontSize: '12px' }}
+                  />
+                  <Bar 
+                    dataKey="avgPrice" 
+                    fill="#10b981" 
+                    radius={[4, 4, 0, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="py-4 px-4 text-xs uppercase font-black tracking-widest text-gray-400">#</th>
+                  <th className="py-4 px-4 text-xs uppercase font-black tracking-widest text-gray-400">Sản Phẩm</th>
+                  <th className="py-4 px-4 text-xs uppercase font-black tracking-widest text-gray-400 text-right">Số Lượng</th>
+                  <th className="py-4 px-4 text-xs uppercase font-black tracking-widest text-gray-400 text-right">Giá TB</th>
+                  <th className="py-4 px-4 text-xs uppercase font-black tracking-widest text-gray-400 text-right">Doanh Thu</th>
+                </tr>
+              </thead>
+              <tbody>
+                {topProducts.map((prod, index) => (
+                  <tr key={prod.productId} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                    <td className="py-4 px-4 font-bold text-gray-900">{index + 1}</td>
+                    <td className="py-4 px-4 text-gray-800 font-semibold">{prod.productName}</td>
+                    <td className="py-4 px-4 text-right text-gray-600">{prod.quantitySold}</td>
+                    <td className="py-4 px-4 text-right font-bold text-green-600">{(prod.avgPrice / 1000).toFixed(0)}K đ</td>
+                    <td className="py-4 px-4 text-right font-black text-blue-600">{(prod.totalRevenue / 1000000).toFixed(1)}M đ</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </motion.div>
 
         {/* Category Details Table */}

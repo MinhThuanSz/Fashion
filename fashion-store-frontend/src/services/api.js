@@ -95,9 +95,12 @@ export const categoriesApi = {
 
 // ── Admin Dashboard ───────────────────────────────────────
 export const adminApi = {
-  getSummary:       () => api.get('/dashboard/summary'),
-  getRevenueByDay:  () => api.get('/dashboard/revenue-by-day'),
-  getRevenueByMonth:() => api.get('/dashboard/revenue-by-month'),
+  getSummary:          () => api.get('/dashboard/summary'),
+  getRevenueByDay:     () => api.get('/dashboard/revenue-by-day'),
+  getRevenueByMonth:   () => api.get('/dashboard/revenue-by-month'),
+  getRevenueByYear:    () => api.get('/dashboard/revenue-by-year'),
+  getTopProducts:      () => api.get('/dashboard/top-products'),
+  getRevenueByCategory:() => api.get('/dashboard/revenue-by-category'),
 }
 
 export default api

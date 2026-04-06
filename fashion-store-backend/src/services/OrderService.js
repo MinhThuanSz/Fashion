@@ -128,7 +128,7 @@ const OrderService = {
         {
           model: OrderItem,
           as: 'items',
-          include: [{ model: ProductVariant, as: 'variant' }]
+          include: [{ model: ProductVariant, as: 'variant', include: [{ model: Product, as: 'product' }] }]
         }
       ],
       limit,

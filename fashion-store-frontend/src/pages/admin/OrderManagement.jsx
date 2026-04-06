@@ -20,10 +20,19 @@ const OrderManagement = () => {
     try {
       setLoading(true)
       const res = await ordersApi.getAll()
-      // Interceptor returns response.data already: { success: true, data: [] }
-      setOrders(res.data || [])
+      const payload = res?.data ?? res?.orders ?? res
+      const data = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload?.orders)
+          ? payload.orders
+          : Array.isArray(payload?.data)
+            ? payload.data
+            : []
+
+      setOrders(data)
     } catch (error) {
       toast.error('Lỗi khi tải danh sách đơn hàng')
+      setOrders([])
     } finally {
       setLoading(false)
     }
@@ -56,7 +65,8 @@ const OrderManagement = () => {
   }
 
 
-  const filtered = orders.filter(o => {
+  const orderList = Array.isArray(orders) ? orders : []
+  const filtered = orderList.filter(o => {
     const matchStatus = selectedStatus === 'all' || o.order_status?.toUpperCase() === selectedStatus
     const matchSearch = (o.receiver_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                         String(o.id).includes(searchTerm)
@@ -116,7 +126,7 @@ const OrderManagement = () => {
             <table className="w-full text-left border-collapse">
               <thead className="bg-gray-50/50 border-b border-gray-100">
                 <tr>
-                  {['Mã đơn', 'Khách hàng', 'Trạng thái đơn', 'Thanh toán', 'Tổng tiền', 'Hành động'].map(h => (
+                  {['Mã đơn', 'Khách hàng', 'Sản phẩm / Giá', 'Trạng thái đơn', 'Thanh toán', 'Tổng tiền', 'Hành động'].map(h => (
                     <th key={h} className="px-6 py-6 text-[10px] uppercase font-black tracking-[0.3em] text-gray-300 italic whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -142,6 +152,18 @@ const OrderManagement = () => {
                             <p className="font-black text-sm text-black">{order.receiver_name}</p>
                             <p className="text-[10px] text-gray-400 font-bold">{order.phone}</p>
                           </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-5">
+                        <div className="space-y-2">
+                          <p className="font-black text-sm text-black">{order.items?.[0]?.variant?.product?.name || order.items?.[0]?.variant?.productName || 'Sản phẩm'}</p>
+                          <p className="text-[10px] text-gray-500 font-bold">
+                            {order.items?.length || 0} sản phẩm
+                          </p>
+                          <p className="text-[10px] text-gray-500 font-bold">
+                            {order.items?.slice(0, 2).map(item => `${item.quantity} x ${Number(item.unitPrice || item.unit_price || 0).toLocaleString('vi-VN')}đ`).join(' • ')}
+                            {order.items?.length > 2 ? ` • +${order.items.length - 2} sản phẩm` : ''}
+                          </p>
                         </div>
                       </td>
                       <td className="px-6 py-5">
