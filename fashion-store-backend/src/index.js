@@ -35,7 +35,7 @@ app.use('/api/images', imageRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/brands', brandRoutes);
 app.use('/api/catalog', sizeColorRoutes); // For sizes and colors
-app.use('/api/cart', cartRoutes);
+app.use('/api/carts', cartRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/dashboard', adminRoutes);
 app.use('/api/roles', roleRoutes);

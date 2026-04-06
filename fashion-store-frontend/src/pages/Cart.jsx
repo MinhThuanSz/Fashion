@@ -10,7 +10,7 @@ const Cart = () => {
   const { items: cartItems } = useSelector(state => state.cart)
   const dispatch = useDispatch()
 
-  const subtotal = cartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0)
+  const subtotal = cartItems.reduce((acc, item) => acc + ((item.unit_price || item.price) * item.quantity), 0)
   const shipping = subtotal > 1000000 ? 0 : 35000
   const tax = subtotal * 0.1
   const total = subtotal + shipping + tax
@@ -82,7 +82,7 @@ const Cart = () => {
                            <span className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-full">{item.color}</span>
                         </div>
                       </div>
-                      <p className="font-black text-2xl">{item.price.toLocaleString('vi-VN')}đ</p>
+                      <p className="font-black text-2xl">{(item.unit_price || item.price).toLocaleString('vi-VN')}đ</p>
                     </div>
 
                     <div className="flex items-center justify-between border-t border-gray-50 pt-6">

@@ -39,12 +39,15 @@ const ProductDetail = () => {
   const handleAddToCart = () => {
     dispatch(addToCart({
       id: product.id,
+      product_variant_id: product.id, // Use product ID as variant ID (frontend has no real variant system)
       name: product.name,
-      price: product.price,
+      price: product.price, // Keep for backward compat, but also add unit_price
+      unit_price: product.price, // Backend expects this
       image: product.image,
       size: selectedSize,
       color: selectedColor,
-      quantity: quantity
+      quantity: quantity,
+      subtotal: product.price * quantity // Pre-calculate for order payload
     }))
     toast.success(`${product.name} đã được thêm vào giỏ hàng!`, { icon: '🛍️' })
   }

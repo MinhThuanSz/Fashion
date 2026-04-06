@@ -53,4 +53,26 @@ const getAllOrders = async (req, res, next) => {
   }
 };
 
-module.exports = { createOrder, getMyOrders, getOrderById, updateOrderStatus, getAllOrders };
+// ========================================
+// PAYMENT PROCESSING - One Click Payment ⚡
+// ========================================
+const processPayment = async (req, res, next) => {
+  try {
+    const result = await orderService.processPayment(
+      req.params.id,
+      req.user.id
+    );
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+module.exports = { 
+  createOrder, 
+  getMyOrders, 
+  getOrderById, 
+  updateOrderStatus, 
+  getAllOrders,
+  processPayment 
+};

@@ -16,7 +16,7 @@ const Checkout = () => {
   const dispatch = useDispatch()
   const navigate = useNavigate()
 
-  const subtotal = cartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0)
+  const subtotal = cartItems.reduce((acc, item) => acc + ((item.unit_price || item.price) * item.quantity), 0)
   const shipping = subtotal > 1000000 ? 0 : 35000
   const tax = subtotal * 0.1
   const total = subtotal + shipping + tax
@@ -37,10 +37,14 @@ const Checkout = () => {
 
   const handlePlaceOrder = async (e) => {
     e.preventDefault()
+    
+    // VALIDATION: Empty cart
     if (cartItems.length === 0) {
       toast.error('Giỏ hàng của bạn đang trống!')
       return;
     }
+    
+    // VALIDATION: Form fields
     if (!formData.receiver_name.trim()) {
       toast.error('Vui lòng nhập họ tên người nhận!')
       return;
@@ -54,6 +58,32 @@ const Checkout = () => {
       return;
     }
 
+    // VALIDATION & NORMALIZATION: Check cart items have required fields
+    const normalizedItems = cartItems.map(item => {
+      const variantId = item.product_variant_id || item.variantId || item.id
+      const unitPrice = item.unit_price || item.price
+      const qty = parseInt(item.quantity) || 0
+      const subtotal = item.subtotal || (unitPrice * qty)
+
+      // Validate required fields
+      if (!variantId) {
+        throw new Error(`Sản phẩm "${item.name}" thiếu thông tin ID. Vui lòng kiểm tra lại.`)
+      }
+      if (!unitPrice || unitPrice <= 0) {
+        throw new Error(`Sản phẩm "${item.name}" thiếu giá. Vui lòng kiểm tra lại.`)
+      }
+      if (qty <= 0) {
+        throw new Error(`Sản phẩm "${item.name}" có số lượng không hợp lệ.`)
+      }
+
+      return {
+        product_variant_id: variantId,
+        quantity: qty,
+        unit_price: unitPrice,
+        subtotal: subtotal
+      }
+    })
+
     setLoading(true)
     try {
       const payload = {
@@ -61,15 +91,11 @@ const Checkout = () => {
         phone:            formData.phone.trim(),
         shipping_address: `${formData.shipping_address.trim()}${formData.city ? `, ${formData.city.trim()}` : ''}`,
         payment_method:   paymentMethod.toUpperCase(),
-        // Send both product_id and variantId so backend can do smart lookup
-        items: cartItems.map(item => ({
-          product_variant_id: item.variantId || null,  // real variant ID if stored
-          product_id:         item.id,                 // product ID as fallback
-          quantity:           item.quantity,
-          unit_price:         item.price,
-          subtotal:           item.price * item.quantity
-        }))
+        items: normalizedItems
       }
+
+      // DEBUG: Log payload before sending
+      console.log('📤 Order Payload:', JSON.stringify(payload, null, 2))
 
       const { ordersApi } = await import('../services/api')
       await ordersApi.create(payload)
@@ -78,22 +104,35 @@ const Checkout = () => {
       dispatch(clearCart())
       toast.success('ĐẶT HÀNG THÀNH CÔNG! Cảm ơn quý khách.', { duration: 5000, icon: '🎉' })
     } catch (error) {
-      console.error('Checkout Error:', error)
-      const apiMsg = error.response?.data?.message || error.response?.data?.error
-
-      // Show friendly Vietnamese message — strip any raw technical IDs
-      if (apiMsg) {
-        // If the message contains raw variant IDs, replace with friendly version
-        const friendlyMsg = apiMsg.includes('Variant ID')
-          ? 'Một sản phẩm trong giỏ hàng hiện không còn khả dụng. Vui lòng kiểm tra lại giỏ hàng.'
-          : apiMsg
-        toast.error(friendlyMsg, { duration: 6000 })
-      } else {
-        toast.error(
-          'Đặt hàng không thành công. Một hoặc nhiều sản phẩm có thể không còn trong kho.',
-          { duration: 6000 }
-        )
+      console.error('❌ Checkout Error:', error)
+      
+      // Handle validation errors from our code
+      if (error.message && error.message.includes('Sản phẩm')) {
+        toast.error(error.message, { duration: 6000 })
+        return
       }
+
+      // Handle API errors
+      const apiMsg = error.response?.data?.message || error.response?.data?.error || error.message
+      let friendlyMsg = 'Đặt hàng không thành công. Vui lòng thử lại.'
+
+      if (apiMsg) {
+        // Map technical errors to friendly Vietnamese messages
+        if (apiMsg.includes('product_variant_id') || apiMsg.includes('items')) {
+          friendlyMsg = 'Một hoặc nhiều sản phẩm trong giỏ hàng không hợp lệ. Vui lòng kiểm tra lại.'
+        } else if (apiMsg.includes('quantity')) {
+          friendlyMsg = 'Số lượng sản phẩm không hợp lệ. Vui lòng kiểm tra lại giỏ hàng.'
+        } else if (apiMsg.includes('not found') || apiMsg.includes('không tồn tại')) {
+          friendlyMsg = 'Một sản phẩm trong giỏ hàng hiện không còn khả dụng. Vui lòng kiểm tra lại.'
+        } else if (apiMsg.includes('payment')) {
+          friendlyMsg = 'Lỗi xử lý thanh toán. Vui lòng thử lại.'
+        } else {
+          // Use API message if it's already in Vietnamese
+          friendlyMsg = apiMsg
+        }
+      }
+      
+      toast.error(friendlyMsg, { duration: 6000 })
     } finally {
       setLoading(false)
     }
@@ -242,7 +281,7 @@ const Checkout = () => {
                          </div>
                          <div className="flex-grow space-y-1 overflow-hidden">
                             <p className="font-bold text-xs truncate text-white uppercase tracking-widest">{item.name}</p>
-                            <p className="text-[9px] font-black text-gray-400 tracking-tighter italic uppercase">{item.quantity} x {item.price.toLocaleString('vi-VN')}đ • {item.size}</p>
+                            <p className="text-[9px] font-black text-gray-400 tracking-tighter italic uppercase">{item.quantity} x {(item.unit_price || item.price).toLocaleString('vi-VN')}đ • {item.size}</p>
                          </div>
                       </div>
                     ))}

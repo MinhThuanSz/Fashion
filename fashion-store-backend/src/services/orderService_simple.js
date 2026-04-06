@@ -110,7 +110,6 @@ const createOrder = async (userId, data) => {
   }
 };
 
-
 /**
  * Get my orders (user side)
  */
@@ -182,52 +181,10 @@ const updateOrderStatus = async (orderId, status, paymentStatus) => {
   }
 };
 
-/**
- * Process payment - Simple & Fast ✨
- */
-const processPayment = async (orderId, userId) => {
-  try {
-    const order = await Order.findByPk(orderId);
-    
-    if (!order) {
-      throw new Error('Đơn hàng không tồn tại');
-    }
-    
-    if (order.user_id !== userId) {
-      throw new Error('Không có quyền thanh toán đơn hàng này');
-    }
-    
-    if (order.payment_status === 'PAID') {
-      throw new Error('Đơn hàng này đã được thanh toán rồi');
-    }
-    
-    if (order.order_status === 'CANCELLED') {
-      throw new Error('Đơn hàng đã bị hủy, không thể thanh toán');
-    }
-    
-    // Mark as PAID ✅
-    order.payment_status = 'PAID';
-    order.order_status = 'PROCESSING';
-    order.payment_date = new Date();
-    
-    await order.save();
-    
-    return {
-      success: true,
-      message: 'Thanh toán thành công',
-      order_id: order.id,
-      payment_status: 'PAID'
-    };
-  } catch (error) {
-    throw new Error(error.message || 'Không thể xử lý thanh toán');
-  }
-};
-
-module.exports = { 
-  createOrder, 
-  getMyOrders, 
-  getOrderById, 
-  updateOrderStatus, 
+module.exports = {
+  createOrder,
+  getMyOrders,
+  getOrderById,
   getAllOrders,
-  processPayment 
+  updateOrderStatus
 };

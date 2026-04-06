@@ -15,22 +15,71 @@ const getCartByUserId = async (userId) => {
 
 const addItemToCart = async (userId, data) => {
   const { product_variant_id, quantity } = data;
+  
+  if (!product_variant_id || product_variant_id <= 0) {
+    throw new Error('Mã sản phẩm (Variant ID) không hợp lệ.');
+  }
+
   const cart = await Cart.findOne({ where: { user_id: userId } });
+  if (!cart) {
+    throw new Error('Giỏ hàng không tồn tại. Vui lòng liên hệ quản trị viên.');
+  }
+
+  // Kiểm tra variant tồn tại và đang active (status = 1)
   const variant = await ProductVariant.findByPk(product_variant_id, {
     include: { model: Product, attributes: ['price', 'discount_price'] }
   });
 
-  if (!variant || (variant.stock < quantity)) throw new Error('Sản phẩm hết hàng hoặc số lượng không hợp lệ');
+  if (!variant) {
+    throw new Error(
+      `Sản phẩm (ID: ${product_variant_id}) không tồn tại trong hệ thống. ` +
+      `Sản phẩm này có thể đã bị xóa. Vui lòng chọn sản phẩm khác.`
+    );
+  }
+
+  if (variant.status !== 1) {
+    throw new Error(
+      `Sản phẩm (ID: ${product_variant_id}) không còn khả dụng để mua. ` +
+      `Vui lòng chọn sản phẩm khác.`
+    );
+  }
+
+  // Kiểm tra số lượng
+  const qty = parseInt(quantity);
+  if (qty <= 0) {
+    throw new Error('Số lượng phải lớn hơn 0.');
+  }
+
+  // Kiểm tra stock
+  if (variant.stock < qty) {
+    throw new Error(
+      `Sản phẩm này chỉ còn ${variant.stock} cái trong kho. ` +
+      `Bạn không thể thêm ${qty} cái vào giỏ. Vui lòng giảm số lượng.`
+    );
+  }
 
   const price = variant.Product.discount_price || variant.Product.price;
   const existingItem = await CartItem.findOne({ where: { cart_id: cart.id, product_variant_id } });
 
   if (existingItem) {
-    existingItem.quantity += quantity;
+    // Kiểm tra stock trước khi tăng quantity
+    if (variant.stock < existingItem.quantity + qty) {
+      throw new Error(
+        `Sản phẩm này chỉ còn ${variant.stock} cái trong kho. ` +
+        `Giỏ hiện có ${existingItem.quantity} cái, không thể thêm ${qty} cái nữa.`
+      );
+    }
+    existingItem.quantity += qty;
     existingItem.subtotal = price * existingItem.quantity;
     await existingItem.save();
   } else {
-    await CartItem.create({ cart_id: cart.id, product_variant_id, quantity, unit_price: price, subtotal: price * quantity });
+    await CartItem.create({ 
+      cart_id: cart.id, 
+      product_variant_id, 
+      quantity: qty, 
+      unit_price: price, 
+      subtotal: price * qty 
+    });
   }
 
   const items = await CartItem.findAll({ where: { cart_id: cart.id } });

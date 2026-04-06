@@ -41,6 +41,10 @@ const Order = sequelize.define('Order', {
   payment_status: {
     type: DataTypes.STRING(50),
     defaultValue: 'Unpaid' // Unpaid, Paid, Refunded
+  },
+  payment_date: {
+    type: DataTypes.DATE,
+    allowNull: true
   }
 }, {
   tableName: 'orders',

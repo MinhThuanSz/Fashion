@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thanh Toán Đơn Hàng</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+            font-size: 28px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+        
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 30px;
+        }
+        
+        button {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-pay {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-pay:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-pay:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-clear {
+            background: #f0f0f0;
+            color: #333;
+            border: 2px solid #ddd;
+        }
+        
+        .btn-clear:hover {
+            background: #e0e0e0;
+        }
+        
+        .message {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 6px;
+            display: none;
+            font-weight: 500;
+        }
+        
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+        
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .order-details {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .order-details h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+        
+        .order-details p {
+            color: #666;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        
+        .order-details strong {
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>💳 Thanh Toán Đơn Hàng</h1>
+        
+        <form id="paymentForm">
+            <div class="form-group">
+                <label for="token">Token (từ login):</label>
+                <input type="password" id="token" placeholder="Paste token từ login response" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="orderId">Mã Đơn Hàng:</label>
+                <input type="number" id="orderId" placeholder="VD: 123" min="1" required>
+            </div>
+            
+            <div id="orderDetails" class="order-details" style="display: none;">
+                <h3>Chi Tiết Đơn Hàng</h3>
+                <p>Tên khách: <strong id="detailName"></strong></p>
+                <p>Số ĐT: <strong id="detailPhone"></strong></p>
+                <p>Địa chỉ: <strong id="detailAddress"></strong></p>
+                <p>Tổng tiền: <strong id="detailTotal"></strong></p>
+                <p>Trạng thái thanh toán: <strong id="detailPayment"></strong></p>
+            </div>
+            
+            <div class="button-group">
+                <button type="button" class="btn-clear" onclick="clearForm()">Xóa</button>
+                <button type="button" class="btn-pay" onclick="handleCheckOrder()">📋 Xem Chi Tiết</button>
+                <button type="button" class="btn-pay" onclick="handlePayment()">💳 Thanh Toán</button>
+            </div>
+        </form>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Đang xử lý...</p>
+        </div>
+        
+        <div class="message" id="message"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:5000/api';
+        
+        function showMessage(text, type) {
+            const msgEl = document.getElementById('message');
+            msgEl.textContent = text;
+            msgEl.className = `message ${type}`;
+        }
+        
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+        }
+        
+        function clearForm() {
+            document.getElementById('paymentForm').reset();
+            document.getElementById('orderDetails').style.display = 'none';
+            document.getElementById('message').style.display = 'none';
+        }
+        
+        async function handleCheckOrder() {
+            const token = document.getElementById('token').value;
+            const orderId = document.getElementById('orderId').value;
+            
+            if (!token || !orderId) {
+                showMessage('❌ Vui lòng nhập token và mã đơn hàng', 'error');
+                return;
+            }
+            
+            showLoading(true);
+            
+            try {
+                const response = await fetch(`${API_BASE}/orders/${orderId}`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.message || 'Lỗi khi lấy chi tiết');
+                }
+                
+                const order = data.data;
+                
+                // Show order details
+                document.getElementById('detailName').textContent = order.receiver_name;
+                document.getElementById('detailPhone').textContent = order.phone;
+                document.getElementById('detailAddress').textContent = order.shipping_address;
+                document.getElementById('detailTotal').textContent = order.total_amount.toLocaleString('vi-VN') + ' VND';
+                document.getElementById('detailPayment').textContent = order.payment_status === 'PAID' ? '✅ Đã thanh toán' : '❌ Chưa thanh toán';
+                
+                document.getElementById('orderDetails').style.display = 'block';
+                showMessage(`✅ Tìm thấy đơn hàng #${orderId}`, 'success');
+                
+            } catch (error) {
+                showMessage('❌ ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+        
+        async function handlePayment() {
+            const token = document.getElementById('token').value;
+            const orderId = document.getElementById('orderId').value;
+            
+            if (!token || !orderId) {
+                showMessage('❌ Vui lòng nhập token và mã đơn hàng', 'error');
+                return;
+            }
+            
+            showLoading(true);
+            
+            try {
+                const response = await fetch(`${API_BASE}/orders/${orderId}/payment`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({})
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.message || 'Lỗi thanh toán');
+                }
+                
+                showMessage(`✅ ${data.data.message} (Đơn hàng #${orderId})`, 'success');
+                
+                // Refresh order details
+                setTimeout(() => handleCheckOrder(), 1500);
+                
+            } catch (error) {
+                showMessage('❌ ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+        
+        // Enter to check order
+        document.getElementById('orderId').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') handleCheckOrder();
+        });
+        
+        // Enter to pay
+        document.getElementById('token').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') handlePayment();
+        });
+    </script>
+</body>
+</html>
